@@ -108,3 +108,68 @@ exports.getDynamicData = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+exports.uploadMedia = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No image file uploaded' });
+    }
+
+    const file = req.file;
+    const path = require('path');
+    const fs = require('fs');
+    const ext = path.extname(file.originalname) || '.png';
+    const cleanName = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}${ext}`;
+
+    // 1. Save to local uploads folder
+    const uploadsDir = path.join(__dirname, '../uploads');
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+    const localFilePath = path.join(uploadsDir, cleanName);
+    fs.writeFileSync(localFilePath, file.buffer);
+
+    // 2. Also upload to Supabase storage 'Aayup/uploads/' for resilient CDN delivery
+    let cdnUrl = '';
+    try {
+      const { data: storageUpload, error: storageErr } = await supabase.storage
+        .from('Aayup')
+        .upload(`uploads/${cleanName}`, file.buffer, {
+          contentType: file.mimetype || 'image/png',
+          upsert: true,
+        });
+
+      if (!storageErr) {
+        const { data: publicUrlData } = supabase.storage
+          .from('Aayup')
+          .getPublicUrl(`uploads/${cleanName}`);
+        if (publicUrlData?.publicUrl) {
+          cdnUrl = publicUrlData.publicUrl;
+        }
+      }
+    } catch (cdnErr) {
+      console.warn('[uploadMedia] Supabase mirror warning:', cdnErr);
+    }
+
+    // Determine host for local backend link
+    const protocol = req.protocol || 'https';
+    const host = req.get('host') || 'api.aayuptechnologies.com';
+    const localUrl = `${protocol}://${host}/uploads/${cleanName}`;
+
+    // Prefer CDN URL if generated, or fallback to backend uploads URL
+    const fileUrl = cdnUrl || localUrl;
+
+    res.json({
+      success: true,
+      url: fileUrl,
+      localUrl,
+      cdnUrl,
+      fileName: cleanName,
+      message: 'Image uploaded successfully to server',
+    });
+  } catch (error) {
+    console.error('[AdminAPI] uploadMedia error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
