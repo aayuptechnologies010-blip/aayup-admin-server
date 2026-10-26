@@ -97,7 +97,7 @@ const createEmailTemplate = (contentHtml, opts = {}) => {
                           <td style="padding-bottom:10px;">
                             <div style="color:${subText};font-size:13px;">
                               Email: <a href="mailto:aayup.technologies.010@gmail.com" style="color:${accent};text-decoration:none;">aayup.technologies.010@gmail.com</a> &nbsp; • &nbsp;
-                              Phone: <a href="tel:+918382984709" style="color:${accent};text-decoration:none;">+91 83829 84709</a>
+                              Phone: <a href="tel:+917030839883" style="color:${accent};text-decoration:none;">+91 70308 39883</a>
                             </div>
                           </td>
                         </tr>
